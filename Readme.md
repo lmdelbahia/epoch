@@ -10,7 +10,7 @@ The second parameter indicate the port in which the server will listen for incom
 To run server in production mode execute it like this
 release/epoch ./conf/ 55001 x
 
-The first two parameters are the same as in the debug mode. The third parameter could be any number or letter o string. The fact that there is a third parameter is what tells the server that it has to be run in production mode.
+The first two parameters are the same as in the debug mode. The third parameter could be any number or letter or string. The fact that there is a third parameter is what tells the server that it has to be run in production mode.
 
 To stop the server it can be used the kill or pkill command sending the SIGINT signal.
 
