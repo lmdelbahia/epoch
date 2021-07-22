@@ -1,9 +1,23 @@
+Abstract.
+The EPOCH protocol is based on the XS_ACE ‘Arbitrary Code Execution’
+subsystem of TF Protocol, in fact, is a subset of XS_ACE (see TF Protocol
+documentation for further reading). The idea behind EPOCH is to provide an
+abstraction layer for communication and encryption allowing the construction
+of functionalities or commands ‘Called endpoints in EPOCH’ on top of it.
+Those endpoints are programs that can be written in any interpreted or JIT
+language, such Python or Java; or any AOT language like C, C++, Pascal,
+and so on. As far as concern to the ‘endpoint’, this is, the program running on
+top of EPOCH, only matters reading from standard input and writing to the
+standard output.
+
+You can find in the folders the server written in C and many clientes written in different languages.
+
 To run server in debug mode execute it like this
 debug/epoch ./conf 55001
 
 The first parameter indicates the folder of the server private key and the authority file.
-    -The private server key is in PEM format.
-    -The authority file is a list of programs and paramters that can be run from EPOCH Protocol
+    -The private server key is in PEM format. This is a file called "key" without the double quotes in the folder indicated by the first parameter.
+    -The authority file is a list of programs and paramters that can be run from EPOCH Protocol. The exact authority file among all of them is specified by the client side.
     
 The second parameter indicate the port in which the server will listen for incomming connections.
 
