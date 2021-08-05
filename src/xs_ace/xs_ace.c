@@ -32,6 +32,8 @@ struct rundat {
     FILE *fin;
     FILE *fout;
     pthread_barrier_t barrier;
+    int rdth_rc;
+    int wrth_rc;
 };
 
 /* Endpoint api info. */
@@ -49,6 +51,7 @@ static int rcvfunc(struct rundat *rdat);
 static char **getargs(char *arg);
 static void *rdthread(void *pp);
 static void *wrthread(void *pp);
+static int sendes(int es);
 
 void xs_ace(enum epoch_mode mode, char *endpt)
 {
@@ -88,11 +91,15 @@ static void runendpt(enum epoch_mode mode, char *endpt)
     rdat.pdout[0] = pdout[0];
     rdat.pdout[1] = pdout[1];
     int64_t hdr = 0;
+    int es;
     switch (mode) {
     case SINGLE_THREAD_SNDFIRST:
         if (sendfunc(&rdat) == -1)
             endcomm(1);
         if (rcvfunc(&rdat) == -1)
+            endcomm(1);
+        rs = waitpid(pid, &es, 0);
+        if (sendes(es) == -1)
             endcomm(1);
         /* Finishing the two-way handsaheke. */
         readbuf_ex((char *) &hdr, sizeof hdr);
@@ -101,6 +108,9 @@ static void runendpt(enum epoch_mode mode, char *endpt)
         if (rcvfunc(&rdat) == -1)
             endcomm(1);
         if (sendfunc(&rdat) == -1)
+            endcomm(1);
+        rs = waitpid(pid, &es, 0);
+        if (sendes(es) == -1)
             endcomm(1);
         /* Finishing the two-way handsaheke. */
         writebuf_ex((char *) &hdr, sizeof hdr);
@@ -116,14 +126,16 @@ static void runendpt(enum epoch_mode mode, char *endpt)
             endcomm(1);
         pthread_barrier_wait(&rdat.barrier);
         pthread_barrier_destroy(&rdat.barrier);
+        if (rdat.wrth_rc || rdat.rdth_rc)
+            endcomm(1);
+        rs = waitpid(pid, &es, 0);
+        if (sendes(es) == -1)
+            endcomm(1);
         /* Finishing the two-way handsaheke. Reverse order at client side. */
         readbuf_ex((char *) &hdr, sizeof hdr);
         hdr = 0;
         writebuf_ex((char *) &hdr, sizeof hdr);
     }
-    do
-        rs = waitpid(pid, NULL, 0); 
-    while (rs == -1 && errno == EINTR);
 }
 
 static void lstclose(enum cltype type, int argc, ...)
@@ -173,6 +185,7 @@ static int rcvfunc(struct rundat *rdat)
     if (writebuf_ex((char *) &hdr, sizeof hdr) == -1)
         return -1;
     close(rdat->pdout[0]);
+    return 0;
 }
 
 char **getargs(char *endpt)
@@ -199,14 +212,29 @@ char **getargs(char *endpt)
 
 static void *rdthread(void *pp)
 {
-    sendfunc(pp);
+    ((struct rundat *) pp)->rdth_rc = sendfunc(pp);
     pthread_barrier_wait(&((struct rundat *) pp)->barrier);
     return NULL;
 }
 
 static void *wrthread(void *pp)
 {
-    rcvfunc(pp);
+    ((struct rundat *) pp)->wrth_rc = rcvfunc(pp);
     pthread_barrier_wait(&((struct rundat *) pp)->barrier);
     return NULL;
+}
+
+static int sendes(int es)
+{
+    int64_t hdr;
+    if (!isbigendian())
+        swapbo32(es);
+    hdr = sizeof es;
+    if (!isbigendian())
+        swapbo64(hdr);
+    if (writebuf_ex((char *) &hdr, sizeof hdr) == -1)
+        return -1;
+    if (writebuf_ex((char *) &es, sizeof es) == -1)
+        return -1;
+    return 0;
 }

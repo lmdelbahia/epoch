@@ -51,8 +51,10 @@ int main(void)
         "VwIDAQAB\n" "-----END PUBLIC KEY-----\n";
     e.pubkey = pubkey;
     /* Run an endpoint. */   
+    int es = 0;
     rc = epoch_endpoint(&e, "/bin/ls -la", "hash_authority", MULTI_THREAD, 3000,
-        snd_callback, rcv_callback);
+        snd_callback, rcv_callback, &es);
     printf("%s\n", bf);
     printf("%d\n", rc);
+    printf("%d\n", WEXITSTATUS(es));
 }

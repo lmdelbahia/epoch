@@ -20,6 +20,8 @@
 #include <sys/time.h>
 #include <signal.h>
 
+#define swapbo32(value) value = (value >> 24 & 0xFF) | (value >> 16 & 0xFF) << \
+    8 | (value >> 8 & 0xFF) << 16 | (value & 0xFF) << 24;
 #define swapbo64(value) value = (value >> 56 & 0xFF) | (value >> 48 & 0xFF) << \
     8 | (value >> 40 & 0xFF) << 16 | (value >> 32 & 0xFF) << 24 | (value >> 24 \
     & 0xFF) << 32 | (value >> 16 & 0xFF) << 40 | (value >> 8 & 0xFF) << 48 | \
@@ -41,6 +43,8 @@ struct netconn {
     pthread_barrier_t barrier;
     callback_rcv rcv;
     callback_snd snd;
+    int rdth_rc;
+    int wrth_rc;
 };
 
 struct rsvparams {
@@ -56,7 +60,7 @@ static int64_t writebuf_ex(struct epoch_s *e, char *buf, int64_t len);
 static int64_t readbuf_ex(struct epoch_s *e, char *buf, int64_t len);
 static void encrypt(struct epoch_s *e, char *data, int len);
 static int procdata(struct epoch_s *e, callback_snd snd_callback, 
-    callback_rcv rcv_callback, enum epoch_mode mode);
+    callback_rcv rcv_callback, enum epoch_mode mode, int *es);
 static int isbigendian(void);
 static int sendskey(struct epoch_s *e);
 static void freecomm(struct epoch_s *e);
@@ -69,10 +73,11 @@ static void conbuilder(char *con, const char *endpt, const char *auth,
 static void blksigpipe(int blk, sigset_t *oldmask);
 static void *rdthread(void *pp);
 static void *wrthread(void *pp);
+static int recves(struct epoch_s *e, int *es);
 
 int epoch_endpoint(struct epoch_s *e, const char *endpt, const char *auth, 
      enum epoch_mode mode, int64_t bufsz, callback_snd snd_callback, 
-     callback_rcv rcv_callback)
+     callback_rcv rcv_callback, int *es)
 {
     e->nc = malloc(sizeof(struct netconn));
     if (!e->nc)
@@ -155,7 +160,7 @@ int epoch_endpoint(struct epoch_s *e, const char *endpt, const char *auth,
         freecomm(e);
         return EPOCH_EENDPTAUTH;
     }
-    rc = procdata(e, snd_callback, rcv_callback, mode);
+    rc = procdata(e, snd_callback, rcv_callback, mode, es);
     freecomm(e);
     return rc;
 }
@@ -210,26 +215,26 @@ static void encrypt(struct epoch_s *e, char *data, int len)
 }
 
 static int procdata(struct epoch_s *e, callback_snd snd_callback, 
-    callback_rcv rcv_callback, enum epoch_mode mode)
+    callback_rcv rcv_callback, enum epoch_mode mode, int *es)
 {
     int rc;
     int64_t hdr = 0;
     if (mode == SINGLE_THREAD_SNDFIRST) {
-        rc = sndloop(e, snd_callback);
-        if (rc)
-            return rc;
-        rc = rcvloop(e, rcv_callback);
-        if (rc)
-            return rc;
+        if (sndloop(e, snd_callback) == -1)
+            return EPOCH_ESEND;
+        if (rcvloop(e, rcv_callback) == -1)
+            return EPOCH_ERECV;
+        if (recves(e, es) == -1)
+            return EPOCH_ERECV;
         /* Finishing the two-way handsaheke. */
         writebuf_ex(e, (char *) &hdr, sizeof hdr);
     } else if (mode == SINGLE_THREAD_RCVFIRST) {
-        rc = rcvloop(e, rcv_callback);
-        if (rc)
-            return rc;
-        rc = sndloop(e, snd_callback);
-        if (rc)
-            return rc;
+        if (rcvloop(e, rcv_callback) == -1)
+            return EPOCH_ERECV;
+        if (sndloop(e, snd_callback) == -1)
+            return EPOCH_ESEND;
+        if (recves(e, es) == -1)
+            return EPOCH_ERECV;
         /* Finishing the two-way handsaheke. */
         readbuf_ex(e, (char *) &hdr, sizeof hdr);
     } else {
@@ -239,12 +244,24 @@ static int procdata(struct epoch_s *e, callback_snd snd_callback,
         int rs = pthread_barrier_init(&e->nc->barrier, NULL, 3);
         if (rs)
             return EPOCH_EMTINIT;
-        rs += pthread_create(&wrth, NULL, wrthread, e);
-        rs += pthread_create(&rdth, NULL, rdthread, e);
-        if (rs)
+        rs = pthread_create(&wrth, NULL, wrthread, e);
+        if (rs) {
+            pthread_barrier_destroy(&e->nc->barrier);
             return EPOCH_EMTINIT;
+        }
+        rs = pthread_create(&rdth, NULL, rdthread, e);
+        if (rs) {
+            pthread_barrier_destroy(&e->nc->barrier);
+            return EPOCH_EMTINIT;
+        }
         pthread_barrier_wait(&e->nc->barrier);
         pthread_barrier_destroy(&e->nc->barrier);
+        if (e->nc->rdth_rc)
+            return EPOCH_ERECV;
+        if (e->nc->wrth_rc)
+            return EPOCH_ESEND;
+        if (recves(e, es) == -1)
+            return EPOCH_ERECV;
         /* Finishing the two-way handsaheke. Reverse order at server side. */
         writebuf_ex(e, (char *) &hdr, sizeof hdr);
         hdr = 0;
@@ -404,10 +421,10 @@ static int sndloop(struct epoch_s *e, callback_snd snd_callback)
         if (!isbigendian())
             swapbo64(hdr);
         if (writebuf_ex(e, (char *) &hdr, sizeof hdr) == -1)
-            return EPOCH_ESEND;
+            return -1;
         if (len)
             if (writebuf_ex(e, e->nc->txbuf, len) == -1)
-                return EPOCH_ESEND;
+                return -1;
     } while (len != 0);
     return 0;
 }
@@ -417,11 +434,11 @@ static int rcvloop(struct epoch_s *e, callback_rcv rcv_callback)
     int64_t hdr;
     do {
         if (readbuf_ex(e, (char *) &hdr, sizeof hdr) == -1)
-            return EPOCH_ERECV;
+            return -1;
         if (!isbigendian())
             swapbo64(hdr);
         if (readbuf_ex(e, e->nc->rxbuf, hdr) == -1)
-            return EPOCH_ERECV;
+            return -1;
         if (rcv_callback)
             if (hdr)
                 rcv_callback(e->nc->rxbuf, hdr);
@@ -467,7 +484,7 @@ void blksigpipe(int blk, sigset_t *oldmask)
 static void *rdthread(void *pp)
 {
     struct epoch_s *e = pp;
-    rcvloop(pp, e->nc->rcv);
+    e->nc->rdth_rc = rcvloop(pp, e->nc->rcv);
     pthread_barrier_wait(&e->nc->barrier);
     return NULL;
 }
@@ -475,7 +492,21 @@ static void *rdthread(void *pp)
 static void *wrthread(void *pp)
 {
     struct epoch_s *e = pp;
-    sndloop(pp, e->nc->snd);
+    e->nc->wrth_rc = sndloop(pp, e->nc->snd);
     pthread_barrier_wait(&e->nc->barrier);
     return NULL;
+}
+
+static int recves(struct epoch_s *e, int *es)
+{
+    int64_t hdr;
+    if (readbuf_ex(e, (char *) &hdr, sizeof hdr) == -1)
+        return -1;
+    if (!isbigendian())
+        swapbo64(hdr);
+    if (readbuf_ex(e, (char *) es, hdr) == -1)
+        return -1;
+    if (!isbigendian())
+        swapbo32(*es); 
+    return 0;
 }
