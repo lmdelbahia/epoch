@@ -35,6 +35,7 @@ prepare:
 
 install:
 	cp release/libepoch.so /usr/lib/
+	cp debug/libepoch_d.so /usr/lib/
 	cp include/epoch.h /usr/include/
 	
 clean:
