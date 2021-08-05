@@ -499,12 +499,7 @@ static void *wrthread(void *pp)
 
 static int recves(struct epoch_s *e, int *es)
 {
-    int64_t hdr;
-    if (readbuf_ex(e, (char *) &hdr, sizeof hdr) == -1)
-        return -1;
-    if (!isbigendian())
-        swapbo64(hdr);
-    if (readbuf_ex(e, (char *) es, hdr) == -1)
+    if (readbuf_ex(e, (char *) es, sizeof *es) == -1)
         return -1;
     if (!isbigendian())
         swapbo32(*es); 

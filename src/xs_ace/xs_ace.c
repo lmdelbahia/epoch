@@ -226,14 +226,8 @@ static void *wrthread(void *pp)
 
 static int sendes(int es)
 {
-    int64_t hdr;
     if (!isbigendian())
         swapbo32(es);
-    hdr = sizeof es;
-    if (!isbigendian())
-        swapbo64(hdr);
-    if (writebuf_ex((char *) &hdr, sizeof hdr) == -1)
-        return -1;
     if (writebuf_ex((char *) &es, sizeof es) == -1)
         return -1;
     return 0;
