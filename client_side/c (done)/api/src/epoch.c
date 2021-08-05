@@ -69,7 +69,7 @@ static void *thresolv(void *pp);
 static int sndloop(struct epoch_s *e, callback_snd snd_callback);
 static int rcvloop(struct epoch_s *e, callback_rcv rcv_callback);
 static void conbuilder(char *con, const char *endpt, const char *auth, 
-    enum epoch_mode mode, int64_t bufsz);
+    enum epoch_mode mode, const char *wd, int64_t bufsz);
 static void blksigpipe(int blk, sigset_t *oldmask);
 static void *rdthread(void *pp);
 static void *wrthread(void *pp);
@@ -77,7 +77,7 @@ static int recves(struct epoch_s *e, int *es);
 
 int epoch_endpoint(struct epoch_s *e, const char *endpt, const char *auth, 
      enum epoch_mode mode, int64_t bufsz, callback_snd snd_callback, 
-     callback_rcv rcv_callback, int *es)
+     callback_rcv rcv_callback, const char *wd, int *es)
 {
     e->nc = malloc(sizeof(struct netconn));
     if (!e->nc)
@@ -139,7 +139,7 @@ int epoch_endpoint(struct epoch_s *e, const char *endpt, const char *auth,
         return rc;
     }
     e->nc->cst = CRYPT_ON;
-    conbuilder(e->nc->rxbuf, endpt, auth, mode, bufsz);
+    conbuilder(e->nc->rxbuf, endpt, auth, mode, wd, bufsz);
     int epdlen = strlen(e->nc->rxbuf);
     int64_t hdr = epdlen;
     if (!isbigendian())
@@ -449,7 +449,7 @@ static int rcvloop(struct epoch_s *e, callback_rcv rcv_callback)
 }
 
 static void conbuilder(char *con, const char *endpt, const char *auth, 
-    enum epoch_mode mode, int64_t bufsz)
+    enum epoch_mode mode, const char *wd, int64_t bufsz)
 {
     strcpy(con, "endpoint{");
     strcat(con, endpt);
@@ -466,6 +466,11 @@ static void conbuilder(char *con, const char *endpt, const char *auth,
     case MULTI_THREAD:
         strcat(con, "multi_thread}");
         break;
+    }
+    if (wd) {
+        strcat(con, "wd{");
+        strcat(con, wd);
+        strcat(con, "}");
     }
     sprintf(con + strlen(con), "%s%lld%s", "bufsz{", bufsz, "}");
 }

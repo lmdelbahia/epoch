@@ -67,7 +67,7 @@ typedef void (*callback_rcv)(void *rcvbuf, int64_t rcvlen);
 /* Run synchronously remote endpoint. */
 int epoch_endpoint(struct epoch_s *e, const char *endpt, const char *auth, 
      enum epoch_mode mode, int64_t bufsz, callback_snd snd_callback, 
-     callback_rcv rcv_callback, int *es);
+     callback_rcv rcv_callback, const char *wd, int *es);
 /* Resolv server from host name. On failure return non-zero. */
 int resolvhn(const char *host, char *ip, int v6, int timeout);
 

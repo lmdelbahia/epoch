@@ -44,6 +44,8 @@ static int64_t getbufsz(const char *endpt);
 static enum epoch_mode getexmode(const char *endpt);
 /* Wait for gracefully close. */
 static void grclose(void);
+/* Set working directory. */
+static void swd(const char *endpt);
 
 void begincomm(int sock, struct sockaddr_in6 *rmaddr, socklen_t *rmaddrsz)
 {
@@ -87,6 +89,7 @@ static void mainloop(void)
     if ((bufsz = getbufsz(comm.rxbuf)) == -1)
         endcomm(1);
     enum epoch_mode mode = getexmode(comm.rxbuf);
+    swd(comm.rxbuf);
     comm.txbuf = malloc(bufsz);
     if (!comm.txbuf)
         endcomm(1);
@@ -281,4 +284,18 @@ static void grclose(void)
     tv.tv_usec = 0;
     setsockopt(comm.sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
     readbuf_ex((char *) &hdr, sizeof hdr);
+}
+
+static void swd(const char *endpt)
+{
+    char endptcp[STRENDPTPM];
+    strcpy(endptcp , endpt);
+    char *bsz = strstr(endptcp, "wd{");
+    if (!bsz) 
+        return;
+    bsz += strlen("wd{");
+    char *tok = strtok(bsz, "}");
+    if (!tok)
+        return;
+    chdir(tok);
 }

@@ -53,7 +53,7 @@ int main(void)
     /* Run an endpoint. */   
     int es = 0;
     rc = epoch_endpoint(&e, "/bin/ls -la", "hash_authority", MULTI_THREAD, 3000,
-        snd_callback, rcv_callback, &es);
+        snd_callback, rcv_callback, NULL, &es);
     printf("%s\n", bf);
     printf("%d\n", rc);
     printf("%d\n", WEXITSTATUS(es));
