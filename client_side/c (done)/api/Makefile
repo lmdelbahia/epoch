@@ -33,5 +33,9 @@ debug/obj/epoch.o: src/epoch.c include/epoch.h
 prepare:
 	mkdir -p debug release debug/obj release/obj
 
+install:
+	cp release/libepoch.so /usr/lib/
+	cp include/epoch.h /usr/include/
+	
 clean:
 	rm -R -f $(obj) $(dbg) release/obj/* debug/obj/* release/libepoch.so debug/libepoch.so

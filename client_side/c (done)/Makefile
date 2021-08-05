@@ -37,6 +37,7 @@ api_release:
 	
 api_debug:
 	cd api && $(MAKE) debug
+	
 prepare:
 	mkdir -p debug release debug/obj release/obj
 
