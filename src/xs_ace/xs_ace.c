@@ -81,7 +81,7 @@ static void runendpt(enum epoch_mode mode, char *endpt)
         sigemptyset(&mask);
         pthread_sigmask(SIG_SETMASK, &mask, NULL);
         char **argl = getargs(endpt);
-        execv(*argl, argl);
+        execvp(*argl, argl);
         exit(EXIT_FAILURE);
     }
     lstclose(CLOSE_FD, 2, pdout[1], pdin[0]);
