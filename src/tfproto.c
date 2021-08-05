@@ -19,6 +19,9 @@
 #include <xs_ace/xs_ace.h>
 
 #define STRENDPTPM 8192
+#define WLD_ANYBIN '*'
+#define WLD_ANYARG '%'
+#define SKIP_LINE '#'
 
 /* Instance of "struct comm". global for entire programe usage. */
 struct comm comm;
@@ -190,12 +193,33 @@ static int chkauth(const char *endpt, char *out)
         return -1;
     }
     while (fgets(path, sizeof path, binfl) != NULL) {
-        *strchr(path, '\n') = '\0';
-        if (!strcmp(path, tok)) {
-            tok = strtok(path, "");
+        char *chpt = strchr(path, '\n');
+        if (chpt) 
+            *chpt = '\0';
+        if (*path == SKIP_LINE)
+            continue;
+        else if (*path == WLD_ANYBIN) {
             strcpy(out, tok);
             fclose(binfl);
             return 0;
+        } else if (*path == WLD_ANYARG) {
+            char bin[LINE_MAX], auth[LINE_MAX];
+            strcpy(bin, tok);
+            strcpy(auth, path + 1);
+            char *bintok = strtok(bin, " ");
+            char *authtok = strtok(auth, " ");
+            if (bintok && authtok && !strcmp(bintok, authtok)) {
+                strcpy(out, tok);
+                fclose(binfl);
+                return 0;
+            }
+        } else if (!strcmp(path, tok)) {
+            tok = strtok(path, "");
+            if (tok) {
+                strcpy(out, tok);
+                fclose(binfl);
+                return 0;
+            }
         }
     }
     fclose(binfl);

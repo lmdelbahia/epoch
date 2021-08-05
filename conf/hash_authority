@@ -1,1 +1,10 @@
+#example of allow a binary with the specified arguments
 /bin/ls -la
+
+#example of allow a binary with any arguments
+%/bin/ls
+
+#example of allow any binary with any arguments
+*
+
+#example of commentary line
