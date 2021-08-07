@@ -21,7 +21,7 @@ Just wanna use it! C example. (May be you need to install openssl libs)
     sudo make install
     
     Run the server
-    epoch /etc/epoch 55001
+    epoch /etc/epoch 55001 x
     
     Create a test program
     nano main.c
