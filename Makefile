@@ -79,5 +79,10 @@ debug/obj/xs_ace.o: src/xs_ace/xs_ace.c include/xs_ace/xs_ace.h
 prepare:
 	mkdir -p debug release debug/obj release/obj
 
+install:
+	cp release/epoch /usr/bin/
+	mkdir -p /etc/epoch
+	cp -R conf/* /etc/epoch/
+
 clean:
 	rm -R -f $(obj) $(dbg) release/obj/* debug/obj/* release/epoch debug/epoch

@@ -54,7 +54,10 @@ int main(void)
     int es = 0;
     rc = epoch_endpoint(&e, "/bin/ls -la", "hash_authority", MULTI_THREAD, 3000,
         snd_callback, rcv_callback, NULL, &es);
+    /* Print the endpoint output. */
     printf("%s\n", bf);
+    /* Print the epoch_endpoint return value. */
     printf("%d\n", rc);
+    /* Print the endpoint -Program executed at the server- exit status. */
     printf("%d\n", WEXITSTATUS(es));
 }
