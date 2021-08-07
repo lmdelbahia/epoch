@@ -104,7 +104,7 @@ int main(void)
 What does this program do?
 
     -Connect to the server through EPOCH Protocol.
-    -Execute remotelly the ls command.
+    -Execute remotely the ls command.
     -Receive the ls output.
     -Print that output
     
