@@ -37,6 +37,11 @@ install:
 	cp release/libepoch.so /usr/lib/
 	cp debug/libepoch_d.so /usr/lib/
 	cp include/epoch.h /usr/include/
-	
+
+remove:
+	rm /usr/lib/libepoch.so
+	rm /usr/lib/libepoch_d.so
+	rm /usr/include/epoch.h
+
 clean:
 	rm -R -f $(obj) $(dbg) release/obj/* debug/obj/* release/libepoch.so debug/libepoch.so

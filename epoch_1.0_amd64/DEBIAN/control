@@ -1,0 +1,6 @@
+Package: epoch
+Version: 1.0
+Architecture: amd64
+Depends: openssl
+Maintainer: lmdelbahia <lmdelbahia@gmail.com>
+Description: An open-source fork of the XS_ACE subsystem of TF PROTOCOL.

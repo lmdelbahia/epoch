@@ -1,0 +1,5 @@
+#!/bin/sh
+
+pkill -9 epoch
+
+exit 0

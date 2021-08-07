@@ -84,5 +84,10 @@ install:
 	mkdir -p /etc/epoch
 	cp -R conf/* /etc/epoch/
 
+remove:
+	pkill -9 epoch
+	rm /usr/bin/epoch
+	rm -R /etc/epoch
+
 clean:
 	rm -R -f $(obj) $(dbg) release/obj/* debug/obj/* release/epoch debug/epoch
