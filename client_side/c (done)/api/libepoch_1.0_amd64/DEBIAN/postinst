@@ -1,0 +1,6 @@
+#!/bin/sh
+
+chown root:root /usr/lib/libepoch.so
+chmod 644 /usr/lib/libepoch.so
+
+exit 0
