@@ -1,5 +1,6 @@
 #!/bin/sh
 
-pkill -9 epoch
+deluser --quiet epoch
+delgroup --quiet epoch
 
 exit 0

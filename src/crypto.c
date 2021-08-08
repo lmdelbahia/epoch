@@ -34,7 +34,7 @@ void initcrypto(struct crypto *crypt)
         wrlog(ELOGALLOCBUF, LGC_CRITICAL);
         exit(1);
     }
-    FILE *fs = fopen(kf, "r+");
+    FILE *fs = fopen(kf, "r");
     if (fs == NULL) {
         wrlog(ELOGKEYFILE, LGC_CRITICAL);
         exit(1);
