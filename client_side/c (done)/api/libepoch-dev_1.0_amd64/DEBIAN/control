@@ -1,0 +1,6 @@
+Package: libepoch-dev
+Version: 1.0
+Architecture: amd64
+Depends: libssl-dev
+Maintainer: lmdelbahia <lmdelbahia@gmail.com>
+Description: A C-programming library development api for EPOCH Protocol.

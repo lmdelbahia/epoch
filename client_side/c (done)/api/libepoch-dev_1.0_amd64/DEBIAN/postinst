@@ -1,0 +1,10 @@
+#!/bin/sh
+
+chown root:root /usr/lib/libepoch.so
+chown root:root /usr/lib/libepoch_d.so
+chown root:root /usr/include/epoch.h
+chmod 644 /usr/lib/libepoch.so
+chmod 644 /usr/lib/libepoch_d.so
+chmod 644 /usr/include/epoch.h
+
+exit 0
