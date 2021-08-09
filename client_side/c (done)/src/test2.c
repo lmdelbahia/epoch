@@ -42,7 +42,7 @@ int main(void)
     /* Send and Receive data. This can be done the other way arround or in
         multi-thread. */
     /* Send nothing. */
-        epoch_send_ex(&e, NULL, 0);
+    epoch_send_ex(&e, NULL, 0);
     do {
         epoch_recv_ex(&e, buf, &len);
         memcpy(bf + pos, buf, len);
