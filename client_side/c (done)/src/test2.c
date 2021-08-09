@@ -8,27 +8,6 @@
 char bf[10000];
 int pos = 0;
 
-/* Receive callback. */
-void rcv_callback(void *buf, int64_t len)
-{    
-    if (len) {
-        memcpy(bf + pos, buf, len);
-        pos += len;
-    }
-}
-
-/* Send callback. */
-void snd_callback(void *buf, int64_t *len)
-{
-    static int i = 0;
-    if (i < 10) {
-        sprintf(buf, "%s%d\n", "Send something ", i);
-        *len = strlen((char *) buf) + 1;
-        i++;
-    } else
-        *len = 0;
-}
-
 
 int main(void)
 {
@@ -50,15 +29,32 @@ int main(void)
         "j30ADzroySlQw+VjcffrGJao9qea1GWGwGMv4d4baMxrZeid2uB7NMUdljW8owWa\n"
         "VwIDAQAB\n" "-----END PUBLIC KEY-----\n";
     e.pubkey = pubkey;
-    /* Run an endpoint. */   
+    /* Run an endpoint in expert mode. */   
     int es = 0;
-    rc = epoch_endpoint(&e, "/bin/ls -la", "hash_authority", MULTI_THREAD, 3000,
-        snd_callback, rcv_callback, NULL, &es);
+    rc = epoch_endpoint_ex(&e, "/bin/ls -la", "hash_authority", 3000, NULL);
+    if (rc) {
+        printf("%d\n", rc);
+        return 1;
+    }
+    printf("%d\n", rc);
+    char buf[3000];
+    int64_t len = 0;
+    /* Send and Receive data. This can be done the other way arround or in
+        multi-thread. */
+    /* Send nothing. */
+        epoch_send_ex(&e, NULL, 0);
+    do {
+        epoch_recv_ex(&e, buf, &len);
+        memcpy(bf + pos, buf, len);
+        pos += len;
+    } while (len > 0);
+    /* */
     /* Print the endpoint output. */
     printf("%s\n", bf);
-    /* Print the epoch_endpoint return value. */
-    printf("%d\n", rc);
+    /* Retrive the endpoint exit status and terminate communication. */
+    rc = epoch_fin_ex(&e, &es);
     /* Print the endpoint -Program executed at the server- exit status. */
-    printf("%d\n", WEXITSTATUS(es));
+    if (!rc)
+        printf("%d\n", WEXITSTATUS(es));
     return 0;
 }

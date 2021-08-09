@@ -90,6 +90,7 @@ int main(void)
     printf("%d\n", rc);
     /* Print the endpoint -Program executed at the server- exit status. */
     printf("%d\n", WEXITSTATUS(es));
+    return 0;
 }
 
 ####

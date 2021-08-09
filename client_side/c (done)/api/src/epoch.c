@@ -45,6 +45,9 @@ struct netconn {
     callback_snd snd;
     int rdth_rc;
     int wrth_rc;
+    int sndflag;
+    int rcvflag;
+    char stdline[LINE_MAX];
 };
 
 struct rsvparams {
@@ -74,95 +77,25 @@ static void blksigpipe(int blk, sigset_t *oldmask);
 static void *rdthread(void *pp);
 static void *wrthread(void *pp);
 static int recves(struct epoch_s *e, int *es);
+static int epoch_epcore(struct epoch_s *e, const char *endpt, const char *auth, 
+     enum epoch_mode mode, int64_t bufsz, const char *wd, int ex);
 
 int epoch_endpoint(struct epoch_s *e, const char *endpt, const char *auth, 
      enum epoch_mode mode, int64_t bufsz, callback_snd snd_callback, 
      callback_rcv rcv_callback, const char *wd, int *es)
 {
-    e->nc = malloc(sizeof(struct netconn));
-    if (!e->nc)
-        return EPOCH_EBUFNULL;
-    if (bufsz < DEFCOMBUF)
-        bufsz = DEFCOMBUF;
-    e->nc->rxbuf = malloc(bufsz);
-    e->nc->txbuf = malloc(bufsz);
-    if (!e->nc->rxbuf || !e->nc->txbuf) {
-        freecomm(e);
-        return EPOCH_EBUFNULL;
-    }
-    e->nc->bufsz = bufsz;
-    e->nc->cst = CRYPT_OFF;
-    e->nc->sock = 0;
-    if (strlen(e->ipv4) > 0) {
-        e->nc->sock = socket(AF_INET, SOCK_STREAM, 0);
-        e->nc->addr.sin_family = AF_INET;
-        e->nc->addr.sin_port = htons(e->port);
-        inet_pton(AF_INET, e->ipv4, &e->nc->addr.sin_addr);
-        if (e->cntmout > 0) {
-            if (connecttm(e) != 0) {
-                freecomm(e);
-                return EPOCH_ECONNECT;
-            }
-        } else if (connect(e->nc->sock, (struct sockaddr *) &e->nc->addr, 
-            sizeof e->nc->addr) == -1) {
-            freecomm(e);
-            return EPOCH_ECONNECT;
-        }
-    } else if (strlen(e->ipv6) > 0) {
-        e->nc->sock = socket(AF_INET6, SOCK_STREAM, 0);
-        e->nc->addr6.sin6_family = AF_INET6;
-        e->nc->addr6.sin6_port = htons(e->port);
-        inet_pton(AF_INET6, e->ipv6, &e->nc->addr6.sin6_addr);
-        if (e->cntmout > 0) {
-            if (connecttm(e) != 0) {
-                freecomm(e);
-                return EPOCH_ECONNECT;
-            }
-        } else if (connect(e->nc->sock, (struct sockaddr *) &e->nc->addr, 
-            sizeof e->nc->addr) == -1) {
-            freecomm(e);
-            return EPOCH_ECONNECT;
-        }
-    } else {
-        freecomm(e);
-        return EPOCH_ECONNECT;
-    }
-    if (e->rdtmout > 0) {
-        struct timeval tv;
-        tv.tv_sec = e->rdtmout;
-        tv.tv_usec = 0;
-        setsockopt(e->nc->sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
-    }
-    int rc;
-    if ((rc = sendskey(e)) != 0) {
-        freecomm(e);
+    int rc = epoch_epcore(e, endpt, auth, mode, bufsz, wd, 0); 
+    if (rc)
         return rc;
-    }
-    e->nc->cst = CRYPT_ON;
-    conbuilder(e->nc->rxbuf, endpt, auth, mode, wd, bufsz);
-    int epdlen = strlen(e->nc->rxbuf);
-    int64_t hdr = epdlen;
-    if (!isbigendian())
-        swapbo64(hdr);
-    if (writebuf_ex(e, (char *) &hdr, sizeof hdr) == -1) {
-        freecomm(e);
-        return EPOCH_ESEND;
-    }
-    if (writebuf_ex(e, e->nc->rxbuf, epdlen) == -1) {
-        freecomm(e);
-        return EPOCH_ESEND;
-    }
-    if (readbuf_ex(e, (char *) &hdr, sizeof hdr) == -1) {
-        freecomm(e);
-        return EPOCH_ERECV;
-    }
-    if (hdr) {
-        freecomm(e);
-        return EPOCH_EENDPTAUTH;
-    }
     rc = procdata(e, snd_callback, rcv_callback, mode, es);
     freecomm(e);
     return rc;
+}
+
+int epoch_endpoint_ex(struct epoch_s *e, const char *endpt, const char *auth, 
+    int64_t bufsz, const char *wd)
+{
+    return epoch_epcore(e, endpt, auth, MULTI_THREAD, bufsz, wd, 1); 
 }
 
 static int64_t writebuf_ex(struct epoch_s *e, char *buf, int64_t len)
@@ -305,8 +238,10 @@ static void freecomm(struct epoch_s *e)
 {
     if (e->nc) {
         close(e->nc->sock);
-        free(e->nc->rxbuf);
-        free(e->nc->txbuf); 
+        if (e->nc->rxbuf)
+            free(e->nc->rxbuf);
+        if (e->nc->txbuf)
+            free(e->nc->txbuf); 
         free(e->nc);
         e->nc = NULL;
     }
@@ -417,6 +352,8 @@ static int sndloop(struct epoch_s *e, callback_snd snd_callback)
     do {
         if (snd_callback)
             snd_callback(e->nc->txbuf, &len);
+        len = len < 0 ? 0 : len; 
+        len = len > e->nc->bufsz ? e->nc->bufsz : len;
         hdr = len;
         if (!isbigendian())
             swapbo64(hdr);
@@ -437,7 +374,7 @@ static int rcvloop(struct epoch_s *e, callback_rcv rcv_callback)
             return -1;
         if (!isbigendian())
             swapbo64(hdr);
-        if (readbuf_ex(e, e->nc->rxbuf, hdr) == -1)
+        if (hdr && readbuf_ex(e, e->nc->rxbuf, hdr) == -1)
             return -1;
         if (rcv_callback)
             if (hdr)
@@ -508,5 +445,156 @@ static int recves(struct epoch_s *e, int *es)
         return -1;
     if (!isbigendian())
         swapbo32(*es); 
+    return 0;
+}
+
+static int epoch_epcore(struct epoch_s *e, const char *endpt, const char *auth, 
+     enum epoch_mode mode, int64_t bufsz, const char *wd, int ex)
+{
+    e->nc = malloc(sizeof(struct netconn));
+    if (!e->nc)
+        return EPOCH_EBUFNULL;
+    if (bufsz < DEFCOMBUF)
+        bufsz = DEFCOMBUF;
+    if (!ex) {
+        e->nc->rxbuf = malloc(bufsz);
+        e->nc->txbuf = malloc(bufsz);
+        if (!e->nc->rxbuf || !e->nc->txbuf) {
+            freecomm(e);
+            return EPOCH_EBUFNULL;
+        }
+    } else {
+        e->nc->rxbuf = e->nc->stdline;
+        e->nc->txbuf = NULL;
+    }
+    e->nc->bufsz = bufsz;
+    e->nc->cst = CRYPT_OFF;
+    e->nc->sock = 0;
+    if (strlen(e->ipv4) > 0) {
+        e->nc->sock = socket(AF_INET, SOCK_STREAM, 0);
+        e->nc->addr.sin_family = AF_INET;
+        e->nc->addr.sin_port = htons(e->port);
+        inet_pton(AF_INET, e->ipv4, &e->nc->addr.sin_addr);
+        if (e->cntmout > 0) {
+            if (connecttm(e) != 0) {
+                freecomm(e);
+                return EPOCH_ECONNECT;
+            }
+        } else if (connect(e->nc->sock, (struct sockaddr *) &e->nc->addr, 
+            sizeof e->nc->addr) == -1) {
+            freecomm(e);
+            return EPOCH_ECONNECT;
+        }
+    } else if (strlen(e->ipv6) > 0) {
+        e->nc->sock = socket(AF_INET6, SOCK_STREAM, 0);
+        e->nc->addr6.sin6_family = AF_INET6;
+        e->nc->addr6.sin6_port = htons(e->port);
+        inet_pton(AF_INET6, e->ipv6, &e->nc->addr6.sin6_addr);
+        if (e->cntmout > 0) {
+            if (connecttm(e) != 0) {
+                freecomm(e);
+                return EPOCH_ECONNECT;
+            }
+        } else if (connect(e->nc->sock, (struct sockaddr *) &e->nc->addr, 
+            sizeof e->nc->addr) == -1) {
+            freecomm(e);
+            return EPOCH_ECONNECT;
+        }
+    } else {
+        freecomm(e);
+        return EPOCH_ECONNECT;
+    }
+    if (e->rdtmout > 0) {
+        struct timeval tv;
+        tv.tv_sec = e->rdtmout;
+        tv.tv_usec = 0;
+        setsockopt(e->nc->sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
+    }
+    int rc;
+    if ((rc = sendskey(e)) != 0) {
+        freecomm(e);
+        return rc;
+    }
+    e->nc->cst = CRYPT_ON;
+    e->nc->sndflag = 0;
+    e->nc->rcvflag = 0;
+    conbuilder(e->nc->rxbuf, endpt, auth, mode, wd, bufsz);
+    int epdlen = strlen(e->nc->rxbuf);
+    int64_t hdr = epdlen;
+    if (!isbigendian())
+        swapbo64(hdr);
+    if (writebuf_ex(e, (char *) &hdr, sizeof hdr) == -1) {
+        freecomm(e);
+        return EPOCH_ESEND;
+    }
+    if (writebuf_ex(e, e->nc->rxbuf, epdlen) == -1) {
+        freecomm(e);
+        return EPOCH_ESEND;
+    }
+    if (ex)
+        e->nc->rxbuf = NULL;
+    if (readbuf_ex(e, (char *) &hdr, sizeof hdr) == -1) {
+        freecomm(e);
+        return EPOCH_ERECV;
+    }
+    if (hdr) {
+        freecomm(e);
+        return EPOCH_EENDPTAUTH;
+    }
+    return 0;
+}
+
+int epoch_send_ex(struct epoch_s *e, void *buf, int64_t len)
+{
+    if (!e->nc->sndflag) {
+        int64_t hdr = 0;
+        len = len < 0 ? 0 : len; 
+        len = len > e->nc->bufsz ? e->nc->bufsz : len;
+        hdr = len;
+        if (!isbigendian())
+            swapbo64(hdr);
+        if (writebuf_ex(e, (char *) &hdr, sizeof hdr) == -1)
+            return EPOCH_ESEND;
+        if (len) {
+            if (writebuf_ex(e, buf, len) == -1)
+                return EPOCH_ESEND;
+        } else
+            e->nc->sndflag = 1;
+    } else
+        return EPOCH_EEXFLAG;
+    return 0;    
+}
+
+int epoch_recv_ex(struct epoch_s *e, void *buf, int64_t *len)
+{
+    int64_t hdr;
+    if (!e->nc->rcvflag) {
+        if (readbuf_ex(e, (char *) &hdr, sizeof hdr) == -1)
+            return EPOCH_ERECV;
+        if (!isbigendian())
+            swapbo64(hdr);
+        *len = hdr;
+        if (hdr) {
+            if (readbuf_ex(e, buf, hdr) == -1)
+                return EPOCH_ERECV;
+        } else
+            e->nc->rcvflag = 1;
+    } else
+        return EPOCH_EEXFLAG;
+    return 0;    
+}
+
+int epoch_fin_ex(struct epoch_s *e, int *es)
+{
+    int64_t hdr = 0;
+    if (recves(e, es) == -1) {
+        freecomm(e);
+        return EPOCH_ERECV;
+    }
+    /* Finishing the two-way handsaheke. Reverse order at server side. */
+    writebuf_ex(e, (char *) &hdr, sizeof hdr);
+    hdr = 0;
+    readbuf_ex(e, (char *) &hdr, sizeof hdr);
+    freecomm(e);
     return 0;
 }
