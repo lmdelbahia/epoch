@@ -33,13 +33,12 @@ void snd_callback(void *buf, int64_t *len)
 int main(void)
 {
     /* For EPOCH client usage, see EPOCH API documentation. */
-    int rc;
-    char ip[16];
-    /* Resolv ip from host. */
-    rc = resolvhn("google.com", ip, 0, 4);
-    printf("%d %s\n", rc, ip);
     /* Initialize the EPOCH structure.*/ 
-    struct epoch_s e = { "127.0.0.1", "", 55001, "sessionkey", 10, "", 0, 3};
+    struct epoch_s e = { "", "", 55001, "sessionkey", 10, "", 0, 3};
+    int rc;
+    /* Resolv ip from host. */
+    rc = resolvhn("localhost", e.ipv4, 0, 4);
+    printf("%d %s\n", rc, e.ipv4);
     /* Server public key. PEM Format. */
     char pubkey[] = "-----BEGIN PUBLIC KEY-----\n"
         "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAq2K/X7ZSKlrMBIrSY9G/\n"
