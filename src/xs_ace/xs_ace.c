@@ -23,6 +23,8 @@
 
 /* Auth token max length. */
 #define MAXAUTHTOK 256
+/* HDR signal flag. */
+#define HDRSIGFLAG -1
 
 enum cltype { CLOSE_FD, CLOSE_FP };
 
@@ -34,6 +36,7 @@ struct rundat {
     pthread_barrier_t barrier;
     int rdth_rc;
     int wrth_rc;
+    pid_t pid;
 };
 
 /* Endpoint api info. */
@@ -90,6 +93,7 @@ static void runendpt(enum epoch_mode mode, char *endpt)
     rdat.pdin[1] = pdin[1];
     rdat.pdout[0] = pdout[0];
     rdat.pdout[1] = pdout[1];
+    rdat.pid = pid;
     int64_t hdr = 0;
     int es;
     switch (mode) {
@@ -161,6 +165,14 @@ static int sendfunc(struct rundat *rdat)
             swapbo64(hdr);
         if (!hdr)
             break;
+        else if (hdr == HDRSIGFLAG) {
+            if (readbuf_ex((char *) &hdr, sizeof hdr) == -1)
+                return -1;
+            if (!isbigendian())
+                swapbo64(hdr);
+            kill(rdat->pid, hdr);
+            continue;
+        }
         if (readbuf_ex(comm.rxbuf, hdr) == -1)
             return -1;
         writechunk(rdat->pdin[1], comm.rxbuf, hdr);

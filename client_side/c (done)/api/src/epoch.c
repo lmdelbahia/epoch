@@ -363,6 +363,7 @@ static int sndloop(struct epoch_s *e, callback_snd snd_callback)
             if (writebuf_ex(e, e->nc->txbuf, len) == -1)
                 return -1;
     } while (len != 0);
+    e->nc->sndflag = 1;
     return 0;
 }
 
@@ -597,4 +598,22 @@ int epoch_fin_ex(struct epoch_s *e, int *es)
     readbuf_ex(e, (char *) &hdr, sizeof hdr);
     freecomm(e);
     return 0;
+}
+
+int epoch_signal(struct epoch_s *e, int signo)
+{
+    if (!e->nc->sndflag) {
+        int64_t hdr = -1;
+        if (!isbigendian())
+            swapbo64(hdr);
+        if (writebuf_ex(e, (char *) &hdr, sizeof hdr) == -1)
+            return EPOCH_ESEND;
+        hdr = signo;
+        if (!isbigendian())
+            swapbo64(hdr);
+        if (writebuf_ex(e, (char *) &hdr, sizeof hdr) == -1)
+            return EPOCH_ESEND;
+        return 0;
+    }
+    return EPOCH_ESIGCONXT;
 }
