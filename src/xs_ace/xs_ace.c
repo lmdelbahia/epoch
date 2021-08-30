@@ -159,22 +159,28 @@ static int sendfunc(struct rundat *rdat)
 {
     int64_t hdr;
     while (1) {
-        if (readbuf_ex((char *) &hdr, sizeof hdr) == -1)
+        if (readbuf_ex((char *) &hdr, sizeof hdr) == -1) {
+            kill(rdat->pid, SIGKILL);
             return -1;
+        }
         if (!isbigendian())
             swapbo64(hdr);
         if (!hdr)
             break;
         else if (hdr == HDRSIGFLAG) {
-            if (readbuf_ex((char *) &hdr, sizeof hdr) == -1)
+            if (readbuf_ex((char *) &hdr, sizeof hdr) == -1) {
+                kill(rdat->pid, SIGKILL);
                 return -1;
+            }
             if (!isbigendian())
                 swapbo64(hdr);
             kill(rdat->pid, hdr);
             continue;
         }
-        if (readbuf_ex(comm.rxbuf, hdr) == -1)
+        if (readbuf_ex(comm.rxbuf, hdr) == -1) {
+            kill(rdat->pid, SIGKILL);
             return -1;
+        }
         writechunk(rdat->pdin[1], comm.rxbuf, hdr);
     }
     close(rdat->pdin[1]);
