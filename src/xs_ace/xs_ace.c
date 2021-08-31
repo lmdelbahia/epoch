@@ -55,6 +55,7 @@ static char **getargs(char *arg);
 static void *rdthread(void *pp);
 static void *wrthread(void *pp);
 static int sendes(int es);
+static int sec_waitpid(int pid);
 
 void xs_ace(enum epoch_mode mode, char *endpt)
 {
@@ -102,7 +103,7 @@ static void runendpt(enum epoch_mode mode, char *endpt)
             endcomm(1);
         if (rcvfunc(&rdat) == -1)
             endcomm(1);
-        rs = waitpid(pid, &es, 0);
+        es = sec_waitpid(pid);
         if (sendes(es) == -1)
             endcomm(1);
         /* Finishing the two-way handsaheke. */
@@ -113,7 +114,7 @@ static void runendpt(enum epoch_mode mode, char *endpt)
             endcomm(1);
         if (sendfunc(&rdat) == -1)
             endcomm(1);
-        rs = waitpid(pid, &es, 0);
+        es = sec_waitpid(pid);
         if (sendes(es) == -1)
             endcomm(1);
         /* Finishing the two-way handsaheke. */
@@ -132,7 +133,7 @@ static void runendpt(enum epoch_mode mode, char *endpt)
         pthread_barrier_destroy(&rdat.barrier);
         if (rdat.wrth_rc || rdat.rdth_rc)
             endcomm(1);
-        rs = waitpid(pid, &es, 0);
+        es = sec_waitpid(pid);
         if (sendes(es) == -1)
             endcomm(1);
         /* Finishing the two-way handsaheke. Reverse order at client side. */
@@ -161,6 +162,7 @@ static int sendfunc(struct rundat *rdat)
     while (1) {
         if (readbuf_ex((char *) &hdr, sizeof hdr) == -1) {
             kill(rdat->pid, SIGKILL);
+            sec_waitpid(rdat->pid);
             return -1;
         }
         if (!isbigendian())
@@ -179,6 +181,7 @@ static int sendfunc(struct rundat *rdat)
         }
         if (readbuf_ex(comm.rxbuf, hdr) == -1) {
             kill(rdat->pid, SIGKILL);
+            sec_waitpid(rdat->pid);
             return -1;
         }
         writechunk(rdat->pdin[1], comm.rxbuf, hdr);
@@ -249,4 +252,14 @@ static int sendes(int es)
     if (writebuf_ex((char *) &es, sizeof es) == -1)
         return -1;
     return 0;
+}
+
+static int sec_waitpid(int pid)
+{
+    int rs; 
+    int32_t es = 0;
+    do
+        rs = waitpid(pid, &es, 0);
+    while (rs == -1 && errno == EINTR);
+    return es;
 }
