@@ -31,6 +31,10 @@
 #define EPOCH_EENDPTAUTH -5
 /* Error initializing multi-thread environment. */
 #define EPOCH_EMTINIT -6
+/* Error calling a function with wrong communication semantics. */
+#define EPOCH_EEXFLAG -7
+/* Signal sent out of context. */
+#define EPOCH_ESIGCONXT -8
 
 enum epoch_mode { 
     SINGLE_THREAD_SNDFIRST, SINGLE_THREAD_RCVFIRST, MULTI_THREAD
@@ -68,7 +72,18 @@ typedef void (*callback_rcv)(void *rcvbuf, int64_t rcvlen);
 int epoch_endpoint(struct epoch_s *e, const char *endpt, const char *auth, 
      enum epoch_mode mode, int64_t bufsz, callback_snd snd_callback, 
      callback_rcv rcv_callback, const char *wd, int *es);
+/* Run Endpoint in expert mode. */
+int epoch_endpoint_ex(struct epoch_s *e, const char *endpt, const char *auth, 
+    int64_t bufsz, const char *wd);
+/* Endpoint expert mode sender function. */
+int epoch_send_ex(struct epoch_s *e, void *buf, int64_t len);
+/* Endpoint expert mode receiver function. */
+int epoch_recv_ex(struct epoch_s *e, void *buf, int64_t *len);
+/* Ends Endpoint expert mode communication. */
+int epoch_fin_ex(struct epoch_s *e, int *es);
 /* Resolv server from host name. On failure return non-zero. */
 int resolvhn(const char *host, char *ip, int v6, int timeout);
+/* Send signal to the endpoint. */
+int epoch_signal(struct epoch_s *e, int signo);
 
 #endif
