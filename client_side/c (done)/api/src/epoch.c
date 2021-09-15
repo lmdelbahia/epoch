@@ -264,8 +264,7 @@ static int connecttm(struct epoch_s *e)
         if (!rc)
             return EPOCH_ECONNECT;
         else if (FD_ISSET(e->nc->sock, &set)) {
-            if (getpeername(e->nc->sock, NULL, NULL) == -1 && errno == 
-                ENOTCONN)
+            if (getpeername(e->nc->sock, NULL, NULL) == -1 && errno == ENOTCONN)
                 return EPOCH_ECONNECT;
             flags &= ~O_NONBLOCK;
             fcntl(e->nc->sock, F_SETFL, flags);
