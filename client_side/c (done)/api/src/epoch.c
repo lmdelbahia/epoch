@@ -248,7 +248,7 @@ static void freecomm(struct epoch_s *e)
 {
     if (e->nc) {
         close(e->nc->sock);
-        if (e->nc->rxbuf)
+        if (e->nc->rxbuf && e->nc->rxbuf != e->nc->stdline)
             free(e->nc->rxbuf);
         if (e->nc->txbuf)
             free(e->nc->txbuf); 
