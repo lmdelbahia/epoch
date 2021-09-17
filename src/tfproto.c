@@ -90,14 +90,16 @@ static void mainloop(void)
         endcomm(1);
     enum epoch_mode mode = getexmode(comm.rxbuf);
     swd(comm.rxbuf);
-    comm.txbuf = malloc(bufsz);
-    if (!comm.txbuf)
-        endcomm(1);
-    free(comm.rxbuf);
-    comm.rxbuf = malloc(bufsz);
-    if (!comm.rxbuf)
-        endcomm(1);
-    comm.bufsz = bufsz;
+    if (mode != DETACHED) {
+        comm.txbuf = malloc(bufsz);
+        if (!comm.txbuf)
+            endcomm(1);
+        free(comm.rxbuf);
+        comm.rxbuf = malloc(bufsz);
+        if (!comm.rxbuf)
+            endcomm(1);
+        comm.bufsz = bufsz;
+    }
     hdr = 0;
     if (writebuf_ex((char *) &hdr, sizeof hdr) == -1)
         endcomm(1);
@@ -272,8 +274,10 @@ static enum epoch_mode getexmode(const char *endpt)
         return SINGLE_THREAD_SNDFIRST;
     else if (!strcmp(tok, "single_thread_rcvfirst"))
         return SINGLE_THREAD_RCVFIRST;
-    else
+    else if (!strcmp(tok, "multi_thread"))
         return MULTI_THREAD;
+    else
+        return DETACHED;
 }
 
 static void grclose(void)

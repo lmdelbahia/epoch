@@ -98,6 +98,16 @@ int epoch_endpoint_ex(struct epoch_s *e, const char *endpt, const char *auth,
     return epoch_epcore(e, endpt, auth, MULTI_THREAD, bufsz, wd, 1); 
 }
 
+int epoch_endpoint_bk(struct epoch_s *e, const char *endpt, const char *auth, 
+    const char *wd)
+{
+    int rc = epoch_epcore(e, endpt, auth, DETACHED, DEFCOMBUF, wd, 1);
+    if (rc)
+        return rc;
+    freecomm(e);
+    return rc;
+}
+
 static int64_t writebuf_ex(struct epoch_s *e, char *buf, int64_t len)
 {
     encrypt(e, buf, len);
@@ -402,6 +412,9 @@ static void conbuilder(char *con, const char *endpt, const char *auth,
         break;
     case MULTI_THREAD:
         strcat(con, "multi_thread}");
+        break;
+    case DETACHED:
+        strcat(con, "detached}");
         break;
     }
     if (wd) {

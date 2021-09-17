@@ -37,7 +37,7 @@
 #define EPOCH_ESIGCONXT -8
 
 enum epoch_mode { 
-    SINGLE_THREAD_SNDFIRST, SINGLE_THREAD_RCVFIRST, MULTI_THREAD
+    SINGLE_THREAD_SNDFIRST, SINGLE_THREAD_RCVFIRST, MULTI_THREAD, DETACHED
 };
 
 /* Obscure type which contains the network connection. */
@@ -75,6 +75,9 @@ int epoch_endpoint(struct epoch_s *e, const char *endpt, const char *auth,
 /* Run Endpoint in expert mode. */
 int epoch_endpoint_ex(struct epoch_s *e, const char *endpt, const char *auth, 
     int64_t bufsz, const char *wd);
+/* Run Endpoint in detached mode. */
+int epoch_endpoint_bk(struct epoch_s *e, const char *endpt, const char *auth, 
+    const char *wd);
 /* Endpoint expert mode sender function. */
 int epoch_send_ex(struct epoch_s *e, void *buf, int64_t len);
 /* Endpoint expert mode receiver function. */

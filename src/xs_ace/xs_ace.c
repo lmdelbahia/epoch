@@ -56,10 +56,14 @@ static void *rdthread(void *pp);
 static void *wrthread(void *pp);
 static int sendes(int es);
 static int sec_waitpid(int pid);
+static void runendpt_bk(char *endpt);
 
 void xs_ace(enum epoch_mode mode, char *endpt)
 {
-    runendpt(mode, endpt);
+    if (mode == DETACHED)
+        runendpt_bk(endpt);
+    else
+        runendpt(mode, endpt);
 }
 
 static void runendpt(enum epoch_mode mode, char *endpt)
@@ -262,4 +266,24 @@ static int sec_waitpid(int pid)
         rs = waitpid(pid, &es, 0);
     while (rs == -1 && errno == EINTR);
     return es;
+}
+
+static void runendpt_bk(char *endpt)
+{
+    pid_t pid = fork();
+    if (pid == -1)
+        endcomm(1);
+    if (!pid) {
+        pid = fork();
+        if (!pid) {
+            sigset_t mask;
+            sigemptyset(&mask);
+            pthread_sigmask(SIG_SETMASK, &mask, NULL);
+            char **argl = getargs(endpt);
+            execvp(*argl, argl);
+            exit(EXIT_FAILURE);
+        }
+        exit(EXIT_FAILURE);
+    }
+    sec_waitpid(pid);
 }
