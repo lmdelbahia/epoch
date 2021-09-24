@@ -53,14 +53,7 @@ void begincomm(int sock, struct sockaddr_in6 *rmaddr, socklen_t *rmaddrsz)
     comm.addr = *rmaddr;
     comm.addrsz = *rmaddrsz;
     fcntl(comm.sock, F_SETOWN, getpid());
-    int64_t hdr;
-    if (readbuf_ex((char *) &hdr, sizeof hdr) == -1)
-        endcomm(1);
-    if (!isbigendian())
-        swapbo64(hdr);
-    if (hdr > RSA_KEYLEN)
-        endcomm(1);
-    if (readbuf_ex(cryp.enkey, hdr) == -1)
+    if (readbuf_ex(cryp.enkey, RSA_KEYLEN) == -1)
         endcomm(1);
     derankey(&cryp);
     cryp.st = CRYPT_ON;

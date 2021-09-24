@@ -234,11 +234,6 @@ static int sendskey(struct epoch_s *e)
     int enbyt = RSA_public_encrypt(e->keylen, e->key, enkey, rsa, pad);
     RSA_free(rsa);
     BIO_free(keybio);
-    int64_t hdr = enbyt;
-    if (!isbigendian())
-        swapbo64(hdr);
-    if (writebuf_ex(e, (char *) &hdr, sizeof hdr) == -1)
-        return EPOCH_ESEND;
     if (writebuf_ex(e, enkey, enbyt) == -1)
         return EPOCH_ESEND;
     return 0;
