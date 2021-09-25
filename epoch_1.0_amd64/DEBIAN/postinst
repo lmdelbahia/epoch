@@ -1,5 +1,6 @@
 #!/bin/sh
 
+adduser --group --no-create-home --system --quiet epoch
 chown -R epoch:epoch /etc/epoch
 chmod -R 755 /etc/epoch
 chown epoch:epoch /usr/bin/epoch
