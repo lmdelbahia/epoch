@@ -10,10 +10,13 @@
 #define CRYPTO_H
 
 #include <openssl/ssl.h>
+#include <inttypes.h>
 
 /* Session key max length in bytes. Must be less than the RSA key length
     modulus minus used padding. In this case is 2048 / 8 - 42 = 214 bytes. */
 #define KEYMAX 2048 / 8 - 42
+/* Minimum session key length. */
+#define KEYMIN 16
 /* RSA key lenght modulus. */
 #define RSA_KEYLEN 2048 / 8
 
@@ -29,6 +32,8 @@ struct crypto {
     char *privkey;
     char enkey[RSA_KEYLEN];
     enum cryptst st;
+    int64_t seed;
+    int64_t jump;
 };
 
 /* Initialize function pointers and random key. */

@@ -48,10 +48,12 @@ static void encrypt(struct crypto *cryp, char *data, int len)
 {
     if (cryp->st == CRYPT_ON) {
         int c = 0, keyc = 0;
-        for (; c < len; c++) {
+        for (; c < len; c++, keyc++) {
             if (keyc == cryp->rndlen)
                 keyc = 0;
-            *(data + c) ^= cryp->rndkey[keyc++];
+            *(data + c) ^= cryp->rndkey[keyc];
+            cryp->seed += cryp->jump;
+            cryp->rndkey[keyc] += cryp->seed;
         }
     }
 }
@@ -67,5 +69,10 @@ int derankey(struct crypto *crypt)
     RSA_free(rsa);
     BIO_free(keybio);
     crypt->rndlen = enbyt;
+    if (enbyt >= KEYMIN) {
+        crypt->seed = *(int64_t *) crypt->rndkey;
+        crypt->jump = *((int64_t *) crypt->rndkey + 1);
+    } else
+        return -1;
     return enbyt;
 }

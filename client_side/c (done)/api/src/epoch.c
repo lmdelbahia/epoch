@@ -28,6 +28,8 @@
     (value & 0xFF) << 56
 /* RSA key lenght modulus. */
 #define RSA_KEYLEN 2048 / 8
+/* Session key minimum length. */
+#define KEYMIN 16
 
 /* The posible states of encrypt system. */
 enum cryptst { CRYPT_OFF, CRYPT_ON };
@@ -48,6 +50,8 @@ struct netconn {
     int sndflag;
     int rcvflag;
     char stdline[LINE_MAX];
+    int64_t seed;
+    int64_t jump;
 };
 
 struct rsvparams {
@@ -149,10 +153,12 @@ static void encrypt(struct epoch_s *e, char *data, int len)
 {
     if (e->nc->cst == CRYPT_ON) {
         int c = 0, keyc = 0;
-        for (; c < len; c++) {
+        for (; c < len; c++, keyc++) {
             if (keyc == e->keylen)
                 keyc = 0;
-            *(data + c) ^= e->key[keyc++];
+            *(data + c) ^= e->key[keyc];
+            e->nc->seed += e->nc->jump;
+            e->key[keyc] += e->nc->seed;
         }
     }
 }
@@ -459,9 +465,13 @@ static int recves(struct epoch_s *e, int *es)
 static int epoch_epcore(struct epoch_s *e, const char *endpt, const char *auth, 
      enum epoch_mode mode, int64_t bufsz, const char *wd, int ex)
 {
+    if (e->keylen < KEYMIN)
+        return EPOCH_EKEYMIN;
     e->nc = malloc(sizeof(struct netconn));
     if (!e->nc)
         return EPOCH_EBUFNULL;
+    e->nc->seed = *(int64_t *) e->key;
+    e->nc->jump = *((int64_t *) e->key + 1);
     if (bufsz < DEFCOMBUF)
         bufsz = DEFCOMBUF;
     if (!ex) {

@@ -34,7 +34,7 @@ int main(void)
 {
     /* For EPOCH client usage, see EPOCH API documentation. */
     /* Initialize the EPOCH structure.*/ 
-    struct epoch_s e = { "", "", 55001, "sessionkey", 10, "", 0, 3};
+    struct epoch_s e = { "", "", 55001, "sessionkey_epoch", 16, "", 0, 3};
     int rc;
     /* Resolv ip from host. */
     rc = resolvhn("localhost", e.ipv4, 0, 4);

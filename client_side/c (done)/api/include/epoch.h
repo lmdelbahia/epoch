@@ -35,6 +35,8 @@
 #define EPOCH_EEXFLAG -7
 /* Signal sent out of context. */
 #define EPOCH_ESIGCONXT -8
+/* Invalid minimum session key length. */
+#define EPOCH_EKEYMIN -9
 
 enum epoch_mode { 
     SINGLE_THREAD_SNDFIRST, SINGLE_THREAD_RCVFIRST, MULTI_THREAD, DETACHED

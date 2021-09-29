@@ -55,7 +55,8 @@ void begincomm(int sock, struct sockaddr_in6 *rmaddr, socklen_t *rmaddrsz)
     fcntl(comm.sock, F_SETOWN, getpid());
     if (readbuf_ex(cryp.enkey, RSA_KEYLEN) == -1)
         endcomm(1);
-    derankey(&cryp);
+    if (derankey(&cryp) == -1) 
+        endcomm(1);
     cryp.st = CRYPT_ON;
     mainloop();
     cleanup();
