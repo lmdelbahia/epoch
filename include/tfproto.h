@@ -33,8 +33,9 @@ struct comm {
     int64_t bufsz;
 } extern comm; 
 
-/* Cryptography structure containing crypt and decrypt functions. */
-extern struct crypto cryp;
+/* Cryptography structures containing crypt and decrypt functions. */
+extern struct crypto cryp_rx;
+extern struct crypto cryp_tx;
 
 /* Initialize internal data and run mainloop function */
 void begincomm(int sock, struct sockaddr_in6 *rmaddr, socklen_t *rmaddrsz);

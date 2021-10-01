@@ -33,6 +33,8 @@
 
 /* The posible states of encrypt system. */
 enum cryptst { CRYPT_OFF, CRYPT_ON };
+/* Tx/Rx operation enum. */
+enum crypop { CRYPT_RX, CRYPT_TX };
 
 struct netconn {
     int sock;
@@ -50,8 +52,11 @@ struct netconn {
     int sndflag;
     int rcvflag;
     char stdline[LINE_MAX];
-    int64_t seed;
-    int64_t jump;
+    int64_t seed_rx;
+    int64_t jump_rx;
+    int64_t seed_tx;
+    int64_t jump_tx;
+    char key_tx[EPOCH_KEYMAX];
 };
 
 struct rsvparams {
@@ -65,7 +70,7 @@ struct rsvparams {
 
 static int64_t writebuf_ex(struct epoch_s *e, char *buf, int64_t len);
 static int64_t readbuf_ex(struct epoch_s *e, char *buf, int64_t len);
-static void encrypt(struct epoch_s *e, char *data, int len);
+static void encrypt(struct epoch_s *e, char *data, int len, enum crypop op);
 static int procdata(struct epoch_s *e, callback_snd snd_callback, 
     callback_rcv rcv_callback, enum epoch_mode mode, int *es);
 static int isbigendian(void);
@@ -114,7 +119,7 @@ int epoch_endpoint_bk(struct epoch_s *e, const char *endpt, const char *auth,
 
 static int64_t writebuf_ex(struct epoch_s *e, char *buf, int64_t len)
 {
-    encrypt(e, buf, len);
+    encrypt(e, buf, len, CRYPT_TX);
     int64_t wb = 0;
     int64_t written = 0;
     sigset_t oldset;
@@ -145,20 +150,26 @@ static int64_t readbuf_ex(struct epoch_s *e, char *buf, int64_t len)
         len -= rb;
         readed += rb;
     }
-    encrypt(e, buf, readed);
+    encrypt(e, buf, readed, CRYPT_RX);
     return readed;
 }
 
-static void encrypt(struct epoch_s *e, char *data, int len)
+static void encrypt(struct epoch_s *e, char *data, int len, enum crypop op)
 {
     if (e->nc->cst == CRYPT_ON) {
         int c = 0, keyc = 0;
         for (; c < len; c++, keyc++) {
             if (keyc == e->keylen)
                 keyc = 0;
-            *(data + c) ^= e->key[keyc];
-            e->nc->seed += e->nc->jump;
-            e->key[keyc] += e->nc->seed;
+            if (op == CRYPT_RX) {
+                *(data + c) ^= e->key[keyc];
+                e->nc->seed_rx += e->nc->jump_rx;
+                e->key[keyc] += e->nc->seed_rx;
+            } else if (op == CRYPT_TX) {
+                *(data + c) ^= e->nc->key_tx[keyc];
+                e->nc->seed_tx += e->nc->jump_tx;
+                e->nc->key_tx[keyc] += e->nc->seed_tx;
+            }
         }
     }
 }
@@ -470,8 +481,11 @@ static int epoch_epcore(struct epoch_s *e, const char *endpt, const char *auth,
     e->nc = malloc(sizeof(struct netconn));
     if (!e->nc)
         return EPOCH_EBUFNULL;
-    e->nc->seed = *(int64_t *) e->key;
-    e->nc->jump = *((int64_t *) e->key + 1);
+    e->nc->seed_rx = *(int64_t *) e->key;
+    e->nc->jump_rx = *((int64_t *) e->key + 1);
+    e->nc->seed_tx = e->nc->seed_rx;
+    e->nc->jump_tx = e->nc->jump_rx;
+    memcpy(e->nc->key_tx, e->key, e->keylen);
     if (bufsz < DEFCOMBUF)
         bufsz = DEFCOMBUF;
     if (!ex) {

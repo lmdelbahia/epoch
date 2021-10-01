@@ -40,5 +40,7 @@ struct crypto {
 void initcrypto(struct crypto *cryp);
 /* Decrypt the session key sent by the client with server's private key. */
 int derankey(struct crypto *crypt);
+/* Duplicate crypt structure. */
+void dup_crypt(struct crypto *to, struct crypto *from);
 
 #endif

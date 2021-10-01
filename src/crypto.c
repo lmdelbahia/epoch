@@ -13,6 +13,7 @@
 #include <log.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <string.h>
 
 /* Server private key. */
 #define PRIVKEY "key"
@@ -75,4 +76,9 @@ int derankey(struct crypto *crypt)
     } else
         return -1;
     return enbyt;
+}
+
+void dup_crypt(struct crypto *to, struct crypto *from)
+{
+    memcpy(to, from, sizeof(struct crypto));
 }

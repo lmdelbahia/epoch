@@ -25,8 +25,9 @@
 
 /* Instance of "struct comm". global for entire programe usage. */
 struct comm comm;
-/* Cryptography structure containing crypt and decrypt functions. */
-struct crypto cryp;
+/* Cryptography structures containing crypt and decrypt functions. */
+struct crypto cryp_rx;
+struct crypto cryp_tx;
 
 /* Main loop until client send "end" message to terminate comm. */
 static void mainloop(void);
@@ -53,11 +54,13 @@ void begincomm(int sock, struct sockaddr_in6 *rmaddr, socklen_t *rmaddrsz)
     comm.addr = *rmaddr;
     comm.addrsz = *rmaddrsz;
     fcntl(comm.sock, F_SETOWN, getpid());
-    if (readbuf_ex(cryp.enkey, RSA_KEYLEN) == -1)
+    if (readbuf_ex(cryp_rx.enkey, RSA_KEYLEN) == -1)
         endcomm(1);
-    if (derankey(&cryp) == -1) 
+    if (derankey(&cryp_rx) == -1) 
         endcomm(1);
-    cryp.st = CRYPT_ON;
+    dup_crypt(&cryp_tx, &cryp_rx);
+    cryp_rx.st = CRYPT_ON;
+    cryp_tx.st = CRYPT_ON;
     mainloop();
     cleanup();
     exit(0);
@@ -121,8 +124,8 @@ int64_t writebuf_ex(char *buf, int64_t len)
 
 static int64_t sndbuf(char *buf, int64_t len)
 {
-    if (cryp.encrypt)
-        cryp.encrypt(&cryp, buf, len);
+    if (cryp_tx.encrypt)
+        cryp_tx.encrypt(&cryp_tx, buf, len);
     int64_t wb = 0;
     int64_t written = 0;
     while (len > 0) {
@@ -150,8 +153,8 @@ static int64_t rcvbuf(char *buf, int64_t len)
         len -= rb;
         readed += rb;
     }
-    if (cryp.encrypt)
-        cryp.encrypt(&cryp, buf, readed);
+    if (cryp_rx.encrypt)
+        cryp_rx.encrypt(&cryp_rx, buf, readed);
     return readed;
 }
 

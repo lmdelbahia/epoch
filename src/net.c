@@ -38,7 +38,7 @@ static void setkeepalive(int so);
 
 void startnet(void)
 {
-    initcrypto(&cryp);
+    initcrypto(&cryp_rx);
     struct sockaddr_in6 addr = { 0 };
     addr.sin6_family = AF_INET6;
     addr.sin6_port = htons(port);
