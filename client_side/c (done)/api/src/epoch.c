@@ -55,9 +55,8 @@ struct netconn {
     int rcvflag;
     char stdline[LINE_MAX];
     int64_t seed_rx;
-    int64_t jump_rx;
+    int64_t jump;
     int64_t seed_tx;
-    int64_t jump_tx;
     char key_tx[EPOCH_KEYMAX];
 };
 
@@ -165,11 +164,11 @@ static void encrypt(struct epoch_s *e, char *data, int len, enum crypop op)
                 keyc = 0;
             if (op == CRYPT_RX) {
                 *(data + c) ^= e->key[keyc];
-                e->nc->seed_rx += e->nc->jump_rx;
+                e->nc->seed_rx += e->nc->jump;
                 e->key[keyc] = e->nc->seed_rx % MOD_VALUE;
             } else if (op == CRYPT_TX) {
                 *(data + c) ^= e->nc->key_tx[keyc];
-                e->nc->seed_tx += e->nc->jump_tx;
+                e->nc->seed_tx += e->nc->jump;
                 e->nc->key_tx[keyc] = e->nc->seed_tx % MOD_VALUE;
             }
         }
@@ -484,9 +483,8 @@ static int epoch_epcore(struct epoch_s *e, const char *endpt, const char *auth,
     if (!e->nc)
         return EPOCH_EBUFNULL;
     e->nc->seed_rx = *(int64_t *) e->key;
-    e->nc->jump_rx = *((int64_t *) e->key + 1);
+    e->nc->jump = *((int64_t *) e->key + 1);
     e->nc->seed_tx = e->nc->seed_rx;
-    e->nc->jump_tx = e->nc->jump_rx;
     memcpy(e->nc->key_tx, e->key, e->keylen);
     if (bufsz < DEFCOMBUF)
         bufsz = DEFCOMBUF;
