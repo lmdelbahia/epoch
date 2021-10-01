@@ -18,7 +18,7 @@
 /* Server private key. */
 #define PRIVKEY "key"
 /* Modulus value. */
-#define MOD_VALUE 255
+#define MOD_VALUE 256
 
 extern char endpts[PATH_MAX];
 

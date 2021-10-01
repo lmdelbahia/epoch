@@ -31,7 +31,7 @@
 /* Session key minimum length. */
 #define KEYMIN 16
 /* Modulus value. */
-#define MOD_VALUE 255
+#define MOD_VALUE 256
 
 /* The posible states of encrypt system. */
 enum cryptst { CRYPT_OFF, CRYPT_ON };
