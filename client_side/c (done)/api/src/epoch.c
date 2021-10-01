@@ -30,6 +30,8 @@
 #define RSA_KEYLEN 2048 / 8
 /* Session key minimum length. */
 #define KEYMIN 16
+/* Modulus value. */
+#define MOD_VALUE 255
 
 /* The posible states of encrypt system. */
 enum cryptst { CRYPT_OFF, CRYPT_ON };
@@ -164,11 +166,11 @@ static void encrypt(struct epoch_s *e, char *data, int len, enum crypop op)
             if (op == CRYPT_RX) {
                 *(data + c) ^= e->key[keyc];
                 e->nc->seed_rx += e->nc->jump_rx;
-                e->key[keyc] += e->nc->seed_rx;
+                e->key[keyc] = e->nc->seed_rx % MOD_VALUE;
             } else if (op == CRYPT_TX) {
                 *(data + c) ^= e->nc->key_tx[keyc];
                 e->nc->seed_tx += e->nc->jump_tx;
-                e->nc->key_tx[keyc] += e->nc->seed_tx;
+                e->nc->key_tx[keyc] = e->nc->seed_tx % MOD_VALUE;
             }
         }
     }

@@ -17,6 +17,8 @@
 
 /* Server private key. */
 #define PRIVKEY "key"
+/* Modulus value. */
+#define MOD_VALUE 255
 
 extern char endpts[PATH_MAX];
 
@@ -54,7 +56,7 @@ static void encrypt(struct crypto *cryp, char *data, int len)
                 keyc = 0;
             *(data + c) ^= cryp->rndkey[keyc];
             cryp->seed += cryp->jump;
-            cryp->rndkey[keyc] += cryp->seed;
+            cryp->rndkey[keyc] = cryp->seed % MOD_VALUE;
         }
     }
 }
