@@ -61,6 +61,8 @@ void begincomm(int sock, struct sockaddr_in6 *rmaddr, socklen_t *rmaddrsz)
     dup_crypt(&cryp_tx, &cryp_rx);
     cryp_rx.st = CRYPT_ON;
     cryp_tx.st = CRYPT_ON;
+    cryp_rx.pack = CRYPT_UNPACK;
+    cryp_tx.pack = CRYPT_PACK;
     mainloop();
     cleanup();
     exit(0);

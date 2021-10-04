@@ -23,6 +23,9 @@
 /* The posible states of encrypt system. */
 enum cryptst { CRYPT_OFF, CRYPT_ON };
 
+/* Message packing mode. */
+enum pack { CRYPT_PACK, CRYPT_UNPACK, CRYPT_NOPACK };
+
 /* Structure to store encryption key and function pointer to 
     encrypt/decrypt. It uses symmetric xor encryption. */
 struct crypto {
@@ -34,6 +37,7 @@ struct crypto {
     enum cryptst st;
     int64_t seed;
     int64_t jump;
+    enum pack pack;
 };
 
 /* Initialize function pointers and random key. */

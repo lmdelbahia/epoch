@@ -32,6 +32,8 @@
 #define KEYMIN 16
 /* Modulus value. */
 #define MOD_VALUE 256
+/* Some division number. */
+#define MAGIC_NUM 65536
 
 /* The posible states of encrypt system. */
 enum cryptst { CRYPT_OFF, CRYPT_ON };
@@ -163,13 +165,17 @@ static void encrypt(struct epoch_s *e, char *data, int len, enum crypop op)
             if (keyc == e->keylen)
                 keyc = 0;
             if (op == CRYPT_RX) {
+                *(data + c) = *(data + c) - (e->nc->seed_rx & 0xFF) -
+                    (e->nc->seed_rx >> 8 & 0xFF);
                 *(data + c) ^= e->key[keyc];
-                e->nc->seed_rx += e->nc->jump;
-                e->key[keyc] = e->nc->seed_rx % MOD_VALUE;
+                e->nc->seed_rx *= e->nc->jump;
+                e->key[keyc] = e->nc->seed_rx / MAGIC_NUM % MOD_VALUE;
             } else if (op == CRYPT_TX) {
                 *(data + c) ^= e->nc->key_tx[keyc];
-                e->nc->seed_tx += e->nc->jump;
-                e->nc->key_tx[keyc] = e->nc->seed_tx % MOD_VALUE;
+                *(data + c) = (e->nc->seed_tx & 0xFF) + (e->nc->seed_tx >> 8 &
+                    0xFF) + *(data + c);
+                e->nc->seed_tx *= e->nc->jump;
+                e->nc->key_tx[keyc] = e->nc->seed_tx / MAGIC_NUM % MOD_VALUE;
             }
         }
     }

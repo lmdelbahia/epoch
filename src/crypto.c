@@ -19,6 +19,8 @@
 #define PRIVKEY "key"
 /* Modulus value. */
 #define MOD_VALUE 256
+/* Some division number. */
+#define MAGIC_NUM 65536
 
 extern char endpts[PATH_MAX];
 
@@ -54,9 +56,17 @@ static void encrypt(struct crypto *cryp, char *data, int len)
         for (; c < len; c++, keyc++) {
             if (keyc == cryp->rndlen)
                 keyc = 0;
-            *(data + c) ^= cryp->rndkey[keyc];
-            cryp->seed += cryp->jump;
-            cryp->rndkey[keyc] = cryp->seed % MOD_VALUE;
+            if (cryp->pack == CRYPT_UNPACK) {
+                *(data + c) = *(data + c) - (cryp->seed & 0xFF) - (cryp->seed >>
+                    8 & 0xFF);
+                *(data + c) ^= cryp->rndkey[keyc];
+            } else if (cryp->pack == CRYPT_PACK) {
+                *(data + c) ^= cryp->rndkey[keyc];
+                *(data + c) = (cryp->seed & 0xFF) + (cryp->seed >> 8 & 0xFF) +
+                    *(data + c);
+            }
+            cryp->seed *= cryp->jump;
+            cryp->rndkey[keyc] = cryp->seed / MAGIC_NUM % MOD_VALUE;
         }
     }
 }
