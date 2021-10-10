@@ -19,8 +19,6 @@
 #define PRIVKEY "key"
 /* Modulus value. */
 #define MOD_VALUE 256
-/* Some division number. */
-#define MAGIC_NUM 65536
 
 extern char endpts[PATH_MAX];
 
@@ -57,16 +55,17 @@ static void encrypt(struct crypto *cryp, char *data, int len)
             if (keyc == cryp->rndlen)
                 keyc = 0;
             if (cryp->pack == CRYPT_UNPACK) {
-                *(data + c) = *(data + c) - (cryp->seed & 0xFF) - (cryp->seed >>
-                    8 & 0xFF);
+                *(data + c) = *(data + c) - (cryp->seed >> 56 & 0xFF);
                 *(data + c) ^= cryp->rndkey[keyc];
             } else if (cryp->pack == CRYPT_PACK) {
                 *(data + c) ^= cryp->rndkey[keyc];
-                *(data + c) = (cryp->seed & 0xFF) + (cryp->seed >> 8 & 0xFF) +
-                    *(data + c);
+                *(data + c) = (cryp->seed >> 56 & 0xFF) + *(data + c);
             }
-            cryp->seed *= cryp->jump;
-            cryp->rndkey[keyc] = cryp->seed / MAGIC_NUM % MOD_VALUE;
+            cryp->seed = cryp->seed * (cryp->seed >> 8 & 0xFFFFFFFF) + 
+                (cryp->seed >> 40 & 0xFFFF);
+            if (cryp->seed == 0)
+                cryp->seed = *(int64_t *) cryp->rndkey;
+            cryp->rndkey[keyc] = cryp->seed % MOD_VALUE;
         }
     }
 }
@@ -82,10 +81,9 @@ int derankey(struct crypto *crypt)
     RSA_free(rsa);
     BIO_free(keybio);
     crypt->rndlen = enbyt;
-    if (enbyt >= KEYMIN) {
+    if (enbyt >= KEYMIN)
         crypt->seed = *(int64_t *) crypt->rndkey;
-        crypt->jump = *((int64_t *) crypt->rndkey + 1);
-    } else
+    else
         return -1;
     return enbyt;
 }

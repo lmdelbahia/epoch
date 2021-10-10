@@ -36,7 +36,6 @@ struct crypto {
     char enkey[RSA_KEYLEN];
     enum cryptst st;
     int64_t seed;
-    int64_t jump;
     enum pack pack;
 };
 

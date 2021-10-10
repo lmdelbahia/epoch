@@ -32,8 +32,6 @@
 #define KEYMIN 16
 /* Modulus value. */
 #define MOD_VALUE 256
-/* Some division number. */
-#define MAGIC_NUM 65536
 
 /* The posible states of encrypt system. */
 enum cryptst { CRYPT_OFF, CRYPT_ON };
@@ -57,7 +55,6 @@ struct netconn {
     int rcvflag;
     char stdline[LINE_MAX];
     int64_t seed_rx;
-    int64_t jump;
     int64_t seed_tx;
     char key_tx[EPOCH_KEYMAX];
 };
@@ -165,17 +162,21 @@ static void encrypt(struct epoch_s *e, char *data, int len, enum crypop op)
             if (keyc == e->keylen)
                 keyc = 0;
             if (op == CRYPT_RX) {
-                *(data + c) = *(data + c) - (e->nc->seed_rx & 0xFF) -
-                    (e->nc->seed_rx >> 8 & 0xFF);
+                *(data + c) = *(data + c) - (e->nc->seed_rx >> 56 & 0xFF);
                 *(data + c) ^= e->key[keyc];
-                e->nc->seed_rx *= e->nc->jump;
-                e->key[keyc] = e->nc->seed_rx / MAGIC_NUM % MOD_VALUE;
+                e->nc->seed_rx = e->nc->seed_rx * (e->nc->seed_rx >> 8 & 
+                    0xFFFFFFFF) + (e->nc->seed_rx >> 40 & 0xFFFF);
+                if (e->nc->seed_rx == 0)
+                    e->nc->seed_rx = *(int64_t *) e->key;
+                e->key[keyc] = e->nc->seed_rx % MOD_VALUE;
             } else if (op == CRYPT_TX) {
                 *(data + c) ^= e->nc->key_tx[keyc];
-                *(data + c) = (e->nc->seed_tx & 0xFF) + (e->nc->seed_tx >> 8 &
-                    0xFF) + *(data + c);
-                e->nc->seed_tx *= e->nc->jump;
-                e->nc->key_tx[keyc] = e->nc->seed_tx / MAGIC_NUM % MOD_VALUE;
+                *(data + c) = (e->nc->seed_tx >> 56 & 0xFF) + *(data + c);
+                e->nc->seed_tx = e->nc->seed_tx * (e->nc->seed_tx >> 8 & 
+                    0xFFFFFFFF) + (e->nc->seed_tx >> 40 & 0xFFFF);
+                if (e->nc->seed_tx == 0)
+                    e->nc->seed_tx = *(int64_t *) e->nc->key_tx;
+                e->nc->key_tx[keyc] = e->nc->seed_tx % MOD_VALUE;
             }
         }
     }
@@ -489,7 +490,6 @@ static int epoch_epcore(struct epoch_s *e, const char *endpt, const char *auth,
     if (!e->nc)
         return EPOCH_EBUFNULL;
     e->nc->seed_rx = *(int64_t *) e->key;
-    e->nc->jump = *((int64_t *) e->key + 1);
     e->nc->seed_tx = e->nc->seed_rx;
     memcpy(e->nc->key_tx, e->key, e->keylen);
     if (bufsz < DEFCOMBUF)
