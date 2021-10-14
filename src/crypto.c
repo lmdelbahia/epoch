@@ -55,14 +55,14 @@ static void encrypt(struct crypto *cryp, char *data, int len)
             if (keyc == cryp->rndlen)
                 keyc = 0;
             if (cryp->pack == CRYPT_UNPACK) {
-                *(data + c) = *(data + c) - (char) (cryp->seed >> 56 & 0xFF);
+                *(data + c) = *(data + c) - (cryp->seed >> 56 & 0xFF);
                 *(data + c) ^= cryp->rndkey[keyc];
             } else if (cryp->pack == CRYPT_PACK) {
                 *(data + c) ^= cryp->rndkey[keyc];
-                *(data + c) = (char) (cryp->seed >> 56 & 0xFF) + *(data + c);
+                *(data + c) = (cryp->seed >> 56 & 0xFF) + *(data + c);
             }
-            cryp->seed = cryp->seed * (int) (cryp->seed >> 8 & 0xFFFFFFFF) + 
-                (short) (cryp->seed >> 40 & 0xFFFF);
+            cryp->seed = cryp->seed * (cryp->seed >> 8 & 0xFFFFFFFF) + 
+                (cryp->seed >> 40 & 0xFFFF);
             if (cryp->seed == 0)
                 cryp->seed = *(int64_t *) cryp->rndkey;
             cryp->rndkey[keyc] = cryp->seed % MOD_VALUE;

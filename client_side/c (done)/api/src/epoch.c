@@ -162,20 +162,18 @@ static void encrypt(struct epoch_s *e, char *data, int len, enum crypop op)
             if (keyc == e->keylen)
                 keyc = 0;
             if (op == CRYPT_RX) {
-                *(data + c) = *(data + c) - (char) (e->nc->seed_rx >> 56 &
-                    0xFF);
+                *(data + c) = *(data + c) - (e->nc->seed_rx >> 56 & 0xFF);
                 *(data + c) ^= e->key[keyc];
-                e->nc->seed_rx = e->nc->seed_rx * (int) (e->nc->seed_rx >> 8 &
-                    0xFFFFFFFF) + (short) (e->nc->seed_rx >> 40 & 0xFFFF);
+                e->nc->seed_rx = e->nc->seed_rx * (e->nc->seed_rx >> 8 &
+                    0xFFFFFFFF) + (e->nc->seed_rx >> 40 & 0xFFFF);
                 if (e->nc->seed_rx == 0)
                     e->nc->seed_rx = *(int64_t *) e->key;
                 e->key[keyc] = e->nc->seed_rx % MOD_VALUE;
             } else if (op == CRYPT_TX) {
                 *(data + c) ^= e->nc->key_tx[keyc];
-                *(data + c) = (char) (e->nc->seed_tx >> 56 & 0xFF) + *(data +
-                    c);
-                e->nc->seed_tx = e->nc->seed_tx * (int) (e->nc->seed_tx >> 8 &
-                    0xFFFFFFFF) + (short) (e->nc->seed_tx >> 40 & 0xFFFF);
+                *(data + c) = (e->nc->seed_tx >> 56 & 0xFF) + *(data + c);
+                e->nc->seed_tx = e->nc->seed_tx * (e->nc->seed_tx >> 8 &
+                    0xFFFFFFFF) + (e->nc->seed_tx >> 40 & 0xFFFF);
                 if (e->nc->seed_tx == 0)
                     e->nc->seed_tx = *(int64_t *) e->nc->key_tx;
                 e->nc->key_tx[keyc] = e->nc->seed_tx % MOD_VALUE;
