@@ -317,7 +317,7 @@ int resolvhn(const char *host, char *ip, int v6, int timeout)
     params.done = 0;
     pthread_mutex_lock(&mut);
     pthread_t th;
-    int rc = pthread_create(&th, NULL, thresolv, &params);
+    pthread_create(&th, NULL, thresolv, &params);
     if (timeout > 0) {
         struct timespec ts;
         struct timeval now;
@@ -373,6 +373,7 @@ static void *thresolv(void *pp)
     pthread_mutex_lock(rsv->mut);
     pthread_cond_signal(rsv->cond);
     pthread_mutex_unlock(rsv->mut);
+    return NULL;
 }
 
 static int sndloop(struct epoch_s *e, callback_snd snd_callback)
