@@ -286,7 +286,7 @@ static int connecttm(struct epoch_s *e)
     FD_ZERO(&set);
     FD_SET(e->nc->sock, &set);
     struct timeval timeout;
-    timeout.tv_sec = 4;
+    timeout.tv_sec = e->cntmout;
     timeout.tv_usec = 0;
     if (connect(e->nc->sock, (struct sockaddr *) &e->nc->addr, 
         sizeof e->nc->addr)) {
