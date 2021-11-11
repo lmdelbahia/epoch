@@ -45,7 +45,7 @@ struct endpt {
     char auth[MAXAUTHTOK];
     char *key;
     int mode;
-} static endpt;
+};
 
 static void runendpt(enum epoch_mode mode, char *endpt);
 static void lstclose(enum cltype type, int argc, ...);

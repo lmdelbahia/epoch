@@ -1,4 +1,5 @@
-cflags = -D_FILE_OFFSET_BITS=64 -I ./include
+cflags = -D_FILE_OFFSET_BITS=64 -I ./include -Wall -Wno-parentheses \
+	-Wno-pointer-sign
 
 #Release profile
 

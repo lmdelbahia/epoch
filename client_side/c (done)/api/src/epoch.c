@@ -185,7 +185,6 @@ static void encrypt(struct epoch_s *e, char *data, int len, enum crypop op)
 static int procdata(struct epoch_s *e, callback_snd snd_callback, 
     callback_rcv rcv_callback, enum epoch_mode mode, int *es)
 {
-    int rc;
     int64_t hdr = 0;
     if (mode == SINGLE_THREAD_SNDFIRST) {
         if (sndloop(e, snd_callback) == -1)
@@ -443,7 +442,7 @@ static void conbuilder(char *con, const char *endpt, const char *auth,
         strcat(con, wd);
         strcat(con, "}");
     }
-    sprintf(con + strlen(con), "%s%lld%s", "bufsz{", bufsz, "}");
+    sprintf(con + strlen(con), "%s%lld%s", "bufsz{", (long long) bufsz, "}");
 }
 
 void blksigpipe(int blk, sigset_t *oldmask)
